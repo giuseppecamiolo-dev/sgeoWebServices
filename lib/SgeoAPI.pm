@@ -3,6 +3,7 @@ package SgeoAPI;
 use Dancer2;
 use Dancer2::Plugin::Database;
 use JSON::MaybeXS qw(JSON);
+use JSON::WebToken;
 use Data::Dumper;
 use POSIX qw(strftime);
 
@@ -11,7 +12,36 @@ our $VERSION = '0.1';
 set serializer => 'JSON';
 
 hook before => sub {
-    # In a real app we would check the Bearer token here.
+    # Bypass OPTIONS requests for CORS preflight
+    return if request->method eq 'OPTIONS';
+
+    my $path = request->path;
+
+    # Skip JWT verification for login route and root path
+    return if $path eq '/api/auth/login' || $path eq '/';
+
+    # Check if path starts with /api/ before checking token
+    if ($path =~ m{^/api/}) {
+        my $auth_header = request->header('Authorization');
+
+        unless ($auth_header && $auth_header =~ /^Bearer\s+(.+)$/) {
+            status 401;
+            halt({ error => "Unauthorized: Missing or invalid Authorization header" });
+        }
+
+        my $token = $1;
+        my $secret = $ENV{JWT_SECRET} || config->{jwt_secret} || 'default_insecure_jwt_secret';
+
+        eval {
+            my $decoded = JSON::WebToken->decode($token, $secret);
+            request->var(jwt => $decoded);
+        };
+
+        if ($@) {
+            status 401;
+            halt({ error => "Unauthorized: Invalid token" });
+        }
+    }
 };
 
 get '/' => sub {
@@ -372,7 +402,20 @@ get '/api/dashboard' => sub {
 };
 
 post '/api/auth/login' => sub {
-    return { token => 'fake-jwt-token' };
+    my $data = body_parameters->as_hashref;
+
+    # In a real app we'd check credentials. We'll just generate a token here.
+    my $username = $data->{username} || 'user';
+    my $secret = $ENV{JWT_SECRET} || config->{jwt_secret} || 'default_insecure_jwt_secret';
+
+    my $claims = {
+        sub => $username,
+        iat => time,
+        exp => time + 3600 # 1 hour expiration
+    };
+
+    my $token = JSON::WebToken->encode($claims, $secret);
+    return { token => $token };
 };
 
 post '/api/auth/logout' => sub {

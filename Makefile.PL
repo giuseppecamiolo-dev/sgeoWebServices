@@ -18,6 +18,7 @@ WriteMakefile(
     PL_FILES            => {},
     PREREQ_PM => {
         "JSON::MaybeXS" => 0,
+        "JSON::WebToken" => 0,
         "Dancer2::Plugin::Database" => 0,
         'Test::More' => 0,
         'YAML'       => 0,

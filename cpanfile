@@ -36,3 +36,4 @@ on "test" => sub {
 
 requires 'Dancer2::Plugin::Database';
 requires 'JSON::MaybeXS';
+requires 'JSON::WebToken';
