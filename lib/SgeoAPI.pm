@@ -18,7 +18,7 @@ hook before => sub {
     my $path = request->path;
 
     # Skip JWT verification for login route and root path
-    return if $path eq '/api/auth/login' || $path eq '/';
+    return if $path eq '/api/auth/login' || $path eq '/' || $path eq '/example_jwt';
 
     # Check if path starts with /api/ before checking token
     if ($path =~ m{^/api/}) {
@@ -47,6 +47,11 @@ hook before => sub {
 get '/' => sub {
     # To satisfy the default test
     return { status => 'ok' };
+};
+
+get '/example_jwt' => sub {
+    # Bypass API auth and send the static file
+    send_file 'example_jwt.html';
 };
 
 # --- 1. Anagrafica Clienti / Fatturazione (Privati e P.IVA / Aziende) ---
