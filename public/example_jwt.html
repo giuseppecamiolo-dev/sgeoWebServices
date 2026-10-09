@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT API Example</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .box h2 { margin-top: 0; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 15px; cursor: pointer; }
+        input { padding: 8px; margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>JWT API Example</h1>
+    <p>This page demonstrates how to authenticate with the API to receive a JWT, and then use that token to make authenticated requests.</p>
+
+    <div class="box">
+        <h2>1. Login to get JWT</h2>
+        <input type="text" id="username" placeholder="Username" value="testuser">
+        <input type="password" id="password" placeholder="Password" value="password">
+        <button onclick="login()">Login</button>
+        <p><strong>Token:</strong></p>
+        <pre id="tokenResult">Not logged in yet.</pre>
+    </div>
+
+    <div class="box">
+        <h2>2. Use JWT to fetch data</h2>
+        <p>This will request data from the protected <code>/api/clienti</code> endpoint.</p>
+        <button onclick="fetchData()">Fetch Clienti Data</button>
+        <p><strong>Response:</strong></p>
+        <pre id="dataResult">No data fetched yet.</pre>
+    </div>
+
+    <script>
+        let currentToken = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const tokenResult = document.getElementById('tokenResult');
+
+            tokenResult.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.token) {
+                    currentToken = data.token;
+                    tokenResult.textContent = currentToken;
+                } else {
+                    tokenResult.textContent = 'Login successful, but no token returned: ' + JSON.stringify(data);
+                }
+            } catch (e) {
+                tokenResult.textContent = 'Login failed: ' + e.message;
+                currentToken = null;
+            }
+        }
+
+        async function fetchData() {
+            const dataResult = document.getElementById('dataResult');
+
+            if (!currentToken) {
+                dataResult.textContent = 'Error: Please login first to get a token.';
+                return;
+            }
+
+            dataResult.textContent = 'Fetching data...';
+
+            try {
+                const response = await fetch('/api/clienti', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}\n${errBody}`);
+                }
+
+                const data = await response.json();
+                dataResult.textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                dataResult.textContent = 'Fetch failed: ' + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
