@@ -64,7 +64,7 @@ template: "simple"
 plugins:
   Database:
     driver: "mysql"
-    database: "c1IH_PA"
+    database: "fake_db"
     host: "localhost"
     username: "fake_user"
     password: "fake_password"
