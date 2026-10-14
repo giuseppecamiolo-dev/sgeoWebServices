@@ -332,6 +332,71 @@ post '/api/rate' => sub {
     return { status => 'ok' };
 };
 
+# --- Entry Tests ---
+
+get '/api/entryTests' => sub {
+    my $db = database();
+
+    # 1. Fetch entry test sessions
+    my $sth = $db->prepare("
+        SELECT
+            id,
+            DATE_FORMAT(Date, '%Y-%m-%d') AS date,
+            Time as time,
+            Slimit as limit_students,
+            onlinelink,
+            password,
+            status
+        FROM entry_test_session
+        WHERE status = 1
+        ORDER BY Date DESC, Time DESC
+        LIMIT 50
+    ");
+    $sth->execute();
+    my $sessions_array = $sth->fetchall_arrayref({});
+
+    my @session_ids = map { $_->{id} } @$sessions_array;
+    my %sessions = map { $_->{id} => $_ } @$sessions_array;
+
+    # 2. Fetch bookings for these sessions
+    if (@session_ids) {
+        my $ids_str = join(',', @session_ids);
+        my $bsth = $db->prepare("
+            SELECT
+                id,
+                ids as session_id,
+                idp as student_id,
+                Name as name,
+                Surname as surname,
+                dob,
+                email,
+                phone,
+                type,
+                level,
+                teacherInfo,
+                extraInfo,
+                note,
+                status
+            FROM entry_test_booking
+            WHERE ids IN ($ids_str) AND status > 0
+        ");
+        $bsth->execute();
+
+        while (my $booking = $bsth->fetchrow_hashref()) {
+            my $session_id = $booking->{session_id};
+            $sessions{$session_id}->{bookings} ||= [];
+            push @{$sessions{$session_id}->{bookings}}, $booking;
+        }
+    }
+
+    # Ensure bookings is at least an empty array for all sessions
+    foreach my $session (@$sessions_array) {
+        $session->{bookings} ||= [];
+    }
+
+    return $sessions_array;
+};
+
 # --- 5. Customer Care / Tickets ---
 
 get '/api/tickets' => sub {
